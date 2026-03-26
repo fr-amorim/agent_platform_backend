@@ -17,10 +17,14 @@ import datetime
 import os
 from zoneinfo import ZoneInfo
 
+from dotenv import load_dotenv
 from google.adk.agents import Agent
 from google.adk.apps import App
 from google.adk.models import Gemini
 from google.genai import types
+
+# Load .env before reading GOOGLE_API_KEY.
+load_dotenv()
 
 api_key = os.getenv("GOOGLE_API_KEY")
 if not api_key:

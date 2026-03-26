@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .agent import app
+# Lazy import so `import app` (e.g. from app.rag.*) does not eagerly
+# load the full agent stack (ADK, Gemini client, docling models, etc.).
+def __getattr__(name: str):
+    if name == "app":
+        from .agent import app  # noqa: PLC0415
+        return app
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = ["app"]

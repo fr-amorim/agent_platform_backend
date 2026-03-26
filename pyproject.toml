@@ -6,10 +6,11 @@ authors = [
     {name = "Your Name", email = "your@email.com"},
 ]
 dependencies = [
-    "google-adk>=1.15.0,<2.0.0",
-    "opentelemetry-instrumentation-google-genai>=0.1.0,<1.0.0",
-    "gcsfs>=2024.11.0",
-    "google-cloud-logging>=3.12.0,<4.0.0",
+    "google-genai>=1.0.0",
+    "python-dotenv>=1.0.0",
+    "python-docx>=1.1.0",
+    "qdrant-client[fastembed]>=1.9",
+    "tiktoken>=0.7",
 ]
 requires-python = ">=3.10,<3.14"
 
@@ -22,6 +23,19 @@ dev = [
 ]
 
 [project.optional-dependencies]
+agent = [
+    "google-adk>=1.15.0,<2.0.0",
+    "opentelemetry-instrumentation-google-genai>=0.1.0,<1.0.0",
+    "gcsfs>=2024.11.0",
+    "google-cloud-logging>=3.12.0,<4.0.0",
+]
+pdf = [
+    "docling>=2.0",
+]
+epub = [
+    "ebooklib>=0.18",
+    "beautifulsoup4>=4.12.0",
+]
 jupyter = [
     "jupyter>=1.0.0,<2.0.0",
 ]

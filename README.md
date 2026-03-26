@@ -34,6 +34,27 @@ Install required packages and launch the local development environment:
 make install && make playground
 ```
 
+### Install profiles
+
+This project now supports a lean default install with optional extras:
+
+```bash
+# Lean RAG dependencies (default)
+uv sync
+
+# Add PDF/advanced parsing support (docling)
+uv sync --extra pdf
+
+# Add EPUB parsing support
+uv sync --extra epub
+
+# Add ADK app/runtime dependencies
+uv sync --extra agent
+
+# Full setup
+uv sync --extra pdf --extra epub --extra agent
+```
+
 ## Commands
 
 | Command              | Description                                                                                 |
