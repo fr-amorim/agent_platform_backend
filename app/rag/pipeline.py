@@ -62,8 +62,44 @@ def ingest(path: str | Path) -> int:
 
 
 def retrieve(query: str) -> str:
-    """Retrieve relevant context for a query (implemented in Phase 3)."""
-    raise NotImplementedError("retrieve() will be implemented in Phase 3")
+    """Retrieve relevant context for a query.
+
+    Pipeline:
+        1. HyDE query expansion — embed original + hypothetical answer
+        2. Hybrid search — dense + sparse (BM25) prefetch + RRF fusion over both vectors
+        3. Gemini Flash reranking — top 20 → top 7
+        4. Context assembly — parent-child swap, dedup, token-budget packing
+
+    Returns:
+        Formatted, cited context string (blocks separated by '---').
+    """
+    from app.rag.retrieval.assembler import assemble_context
+    from app.rag.retrieval.query_processor import expand_query
+    from app.rag.retrieval.reranker import rerank
+    from app.rag.retrieval.retriever import hybrid_search
+
+    logger.info("=" * 60)
+    logger.info("Starting retrieval for: %s", query[:100])
+    logger.info("=" * 60)
+
+    logger.info("Step 1/4: Query expansion (HyDE)...")
+    original_vec, hyde_vec = expand_query(query)
+
+    logger.info("Step 2/4: Hybrid search (dense + sparse, original + HyDE)...")
+    candidates = hybrid_search(query, original_vec, hyde_vec)
+    logger.info("Step 2/4 complete: %d candidates", len(candidates))
+
+    logger.info("Step 3/4: Reranking with Gemini Flash...")
+    ranked = rerank(query, candidates)
+    logger.info("Step 3/4 complete: %d results after reranking", len(ranked))
+
+    logger.info("Step 4/4: Assembling context (parent swap + token budget)...")
+    context = assemble_context(ranked)
+
+    logger.info("=" * 60)
+    logger.info("Retrieval complete.")
+    logger.info("=" * 60)
+    return context
 
 
 if __name__ == "__main__":
@@ -83,7 +119,12 @@ if __name__ == "__main__":
             logger.error(f"Ingestion failed: {e}", exc_info=True)
             sys.exit(1)
     elif command == "retrieve":
-        print(retrieve(arg))
+        try:
+            result = retrieve(arg)
+            print(result if result else "(no results found)")
+        except Exception as e:
+            logger.error(f"Retrieval failed: {e}", exc_info=True)
+            sys.exit(1)
     else:
         print(f"Unknown command: {command}")
         sys.exit(1)

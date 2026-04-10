@@ -103,27 +103,39 @@ uv sync --extra pdf --extra agent
 
 ---
 
-## Phase 3 — Retrieval Pipeline ⬜
+## Phase 3 — Retrieval Pipeline ✅
 
-### Files to create
+### Files created / modified
 
 | File | Description |
 |---|---|
-| `app/rag/retrieval/query_processor.py` | HyDE — Gemini generates a hypothetical answer; embed original + hypothetical with `RETRIEVAL_QUERY` |
-| `app/rag/retrieval/retriever.py` | Qdrant `query_points` with dense + BM25 sparse prefetch, RRF fusion; merge across both query vectors → top 20 |
-| `app/rag/retrieval/reranker.py` | Gemini 1.5 Flash reranker — top 20 `(query, chunk)` pairs → ranked chunk IDs → keep top 7 |
-| `app/rag/retrieval/assembler.py` | Parent-child swap, metadata header, dedup by `parent_chunk_id`, token-budget packing |
-| `app/rag/pipeline.py` | Add `retrieve(query)` entrypoint |
+| `app/rag/retrieval/query_processor.py` | HyDE — Gemini generates a hypothetical answer; embeds original + hypothetical with `RETRIEVAL_QUERY`; returns `(original_vec, hyde_vec)` |
+| `app/rag/retrieval/retriever.py` | Qdrant hybrid search: dense + BM25 sparse prefetch with RRF fusion; runs over both query vectors, deduplicates → top 20 |
+| `app/rag/retrieval/reranker.py` | Gemini Flash reranker — top 20 `(query, chunk)` pairs → ranked list via JSON response → keep top 7; parse fallback to original order |
+| `app/rag/retrieval/assembler.py` | Parent-child swap via Qdrant `retrieve`; dedup by `parent_chunk_id`; `[Source: file | Section: ... | Page: N]` headers; 6000-token budget packing |
+| `app/rag/pipeline.py` | `retrieve(query)` fully implemented: HyDE → hybrid search → rerank → assemble; CLI retrieve with error handling |
 
-### How to test (once implemented)
+### Environment variables
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `HYDE_MODEL` | `gemini-2.5-flash` | LLM for hypothetical answer generation |
+| `RERANK_MODEL` | `gemini-2.5-flash` | LLM for reranking |
+| `CONTEXT_TOKEN_BUDGET` | `6000` | Max tokens for assembled context |
+| `QDRANT_URL` | `http://localhost:6333` | Qdrant endpoint |
+
+### How to test
 
 ```bash
 # Requires an ingested collection from Phase 2
-python -m app.rag.pipeline retrieve "what is X"
+uv run python -m app.rag.pipeline retrieve "what is X"
 # Expected: formatted text blocks with [Source: ...] headers
 
-# Debug: set env var to see HyDE expansion
-LOGLEVEL=DEBUG python -m app.rag.pipeline retrieve "what is X"
+# Debug: see HyDE expansion and search scores
+LOGLEVEL=DEBUG uv run python -m app.rag.pipeline retrieve "what is X"
+
+# Smoke test: verify all imports resolve
+uv run python -c "from app.rag.retrieval.query_processor import expand_query; from app.rag.retrieval.retriever import hybrid_search; from app.rag.retrieval.reranker import rerank; from app.rag.retrieval.assembler import assemble_context; print('OK')"
 ```
 
 ---

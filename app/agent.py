@@ -23,6 +23,8 @@ from google.adk.apps import App
 from google.adk.models import Gemini
 from google.genai import types
 
+from app.rag.pipeline import retrieve
+
 # Load .env before reading GOOGLE_API_KEY.
 load_dotenv()
 
@@ -37,6 +39,24 @@ os.environ["GOOGLE_API_KEY"] = api_key
 os.environ.pop("GOOGLE_GENAI_USE_VERTEXAI", None)
 os.environ.pop("GOOGLE_CLOUD_PROJECT", None)
 os.environ.pop("GOOGLE_CLOUD_LOCATION", None)
+
+
+def retrieve_context(query: str) -> str:
+    """Search the internal knowledge base and return relevant document context.
+
+    Use this tool whenever the user asks a question that may be answered by
+    internal documents, policies, reports, or any domain-specific content that
+    has been ingested into the knowledge base.
+
+    Args:
+        query: A natural-language question or search phrase describing what
+            information is needed.
+
+    Returns:
+        A string containing the most relevant document excerpts with source
+        citations, or an empty string when nothing relevant is found.
+    """
+    return retrieve(query)
 
 
 def get_weather(query: str) -> str:
@@ -79,8 +99,16 @@ root_agent = Agent(
         model = 'gemini-2.5-flash',
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
-    instruction="You are a helpful AI assistant designed to provide accurate and useful information.",
-    tools=[get_weather, get_current_time],
+    instruction=(
+        "You are a helpful AI assistant with access to an internal knowledge base. "
+        "When the user asks a question that may be answered by internal documents, "
+        "always call `retrieve_context` first and base your answer on the returned "
+        "excerpts. Cite the source shown in each excerpt's header (e.g. "
+        "'Source: report.pdf | Section: Introduction'). "
+        "If `retrieve_context` returns nothing relevant, answer from your general "
+        "knowledge and state that no internal documents were found."
+    ),
+    tools=[retrieve_context, get_weather, get_current_time],
 )
 
 app = App(
